@@ -19,7 +19,7 @@ function CardBody({ s, highlight }: { s: SubmissionDTO; highlight?: boolean }) {
         <TypeChip type={s.type} />
       </div>
       <div className={`mt-2 text-xs font-mono ${overdue ? 'text-critical' : 'text-muted'}`}>Needed {fmtDate(s.date_needed_by)}</div>
-      {s.status === 'planned' && s.start_date && <div className="text-xs font-mono text-muted">{fmtDate(s.start_date)} – {fmtDate(s.end_date)}</div>}
+      {(s.status === 'planned' || s.status === 'done') && s.start_date && <div className="text-xs font-mono text-muted">{fmtDate(s.start_date)} – {fmtDate(s.end_date)}</div>}
       <div className="mt-2 flex items-center justify-between text-xs text-muted">
         <span>{s.impacted_users.toLocaleString()} users</span>
         <Avatar user={s.submitted_by} size={20} />

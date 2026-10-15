@@ -1,9 +1,14 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import { BacklogIcon, DashboardIcon, SubmitIcon } from './icons';
 import { Avatar, Logo } from './ui';
 
-const tabs = [['/dashboard', 'Dashboard'], ['/backlog', 'Backlog'], ['/submit', 'Submit Idea']] as const;
+const tabs = [
+  ['/dashboard', 'Dashboard', DashboardIcon],
+  ['/backlog', 'Backlog', BacklogIcon],
+  ['/submit', 'Submit Idea', SubmitIcon],
+] as const;
 
 export default function AppBar() {
   const { user, signOut } = useAuth();
@@ -13,8 +18,9 @@ export default function AppBar() {
     <header className="h-14 shrink-0 border-b border-line bg-surface flex items-center px-6 gap-8">
       <Link to="/dashboard" aria-label="Prioritize AI home"><Logo size={24} /></Link>
       <nav className="flex gap-1" aria-label="Main">
-        {tabs.map(([to, label]) => (
-          <NavLink key={to} to={to} className={({ isActive }) => `px-3 py-1.5 rounded-md text-sm ${isActive ? 'bg-surface-2 text-ink' : 'text-muted hover:text-ink'}`}>
+        {tabs.map(([to, label, TabIcon]) => (
+          <NavLink key={to} to={to} className={({ isActive }) => `flex items-center gap-2 px-3 py-1.5 rounded-md text-sm ${isActive ? 'bg-surface-2 text-ink' : 'text-muted hover:text-ink'}`}>
+            <TabIcon />
             {label}
           </NavLink>
         ))}

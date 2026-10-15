@@ -1,0 +1,51 @@
+# Cloud Build: test, build image, push, migrate, deploy to Cloud Run.
+# Trigger: push to main. Substitutions have defaults for the single POC environment.
+substitutions:
+  _REGION: us-central1
+  _REPO: prioritize-ai
+  _SERVICE: prioritize-ai
+  _SQL_INSTANCE: prioritize-ai-db
+  _RUN_SA: prioritize-ai-run
+options:
+  logging: CLOUD_LOGGING_ONLY
+steps:
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:$BUILD_ID', '.']
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args: ['push', '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:$BUILD_ID']
+  - id: migrate
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        IMAGE=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:$BUILD_ID
+        gcloud run jobs deploy prioritize-ai-migrate --image=$$IMAGE --region=${_REGION} \
+          --service-account=${_RUN_SA}@$PROJECT_ID.iam.gserviceaccount.com \
+          --set-cloudsql-instances=$PROJECT_ID:${_REGION}:${_SQL_INSTANCE} \
+          --set-secrets=DATABASE_URL=DATABASE_URL:latest \
+          --command=node --args=dist/db/migrate.js --max-retries=0
+        gcloud run jobs execute prioritize-ai-migrate --region=${_REGION} --wait
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:$BUILD_ID
+      - --region=${_REGION}
+      - --service-account=${_RUN_SA}@$PROJECT_ID.iam.gserviceaccount.com
+      - --add-cloudsql-instances=$PROJECT_ID:${_REGION}:${_SQL_INSTANCE}
+      - --set-secrets=DATABASE_URL=DATABASE_URL:latest,SESSION_SECRET=SESSION_SECRET:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest
+      - --set-env-vars=AI_PROVIDER=vertex,GCP_PROJECT=$PROJECT_ID,GCP_LOCATION=${_REGION}
+      - --memory=512Mi
+      - --cpu=1
+      - --min-instances=0
+      - --max-instances=3
+      - --allow-unauthenticated
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:$BUILD_ID

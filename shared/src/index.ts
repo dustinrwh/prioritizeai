@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const SUBMISSION_TYPES = ['new_project', 'bug_fix', 'feature_request'] as const;
 export const USER_TYPES = ['internal', 'external', 'both'] as const;
-export const STATUSES = ['needs_review', 'in_review', 'planned', 'ice_box'] as const;
+export const STATUSES = ['needs_review', 'in_review', 'planned', 'done', 'ice_box'] as const;
 export const PRIORITIES = ['critical', 'high', 'medium', 'low'] as const;
 export const CONFIDENCES = ['high', 'medium', 'low'] as const;
 
@@ -22,6 +22,7 @@ export const STATUS_LABELS: Record<Status, string> = {
   needs_review: 'Needs Review',
   in_review: 'In Review',
   planned: 'Planned',
+  done: 'Done',
   ice_box: 'Ice Box',
 };
 export const PRIORITY_LABELS: Record<Priority, string> = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };

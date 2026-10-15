@@ -4,7 +4,7 @@ import { check, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, u
 export const roleEnum = pgEnum('role', ['member', 'admin']);
 export const submissionTypeEnum = pgEnum('submission_type', ['new_project', 'bug_fix', 'feature_request']);
 export const userTypeEnum = pgEnum('user_type', ['internal', 'external', 'both']);
-export const statusEnum = pgEnum('status', ['needs_review', 'in_review', 'planned', 'ice_box']);
+export const statusEnum = pgEnum('status', ['needs_review', 'in_review', 'planned', 'done', 'ice_box']);
 export const priorityEnum = pgEnum('priority', ['critical', 'high', 'medium', 'low']);
 export const confidenceEnum = pgEnum('confidence', ['high', 'medium', 'low']);
 export const activityFieldEnum = pgEnum('activity_field', ['status', 'priority', 'dates', 'content']);

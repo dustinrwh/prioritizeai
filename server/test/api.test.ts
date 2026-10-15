@@ -83,6 +83,16 @@ describe('submissions', () => {
     expect(r.end_date).toBe('2026-12-20');
   });
 
+  it('moves done items off the dashboard but keeps their dates', async () => {
+    const s = await create('a@x.com');
+    await patch('b@x.com', s.id, { status: 'planned', start_date: '2026-12-01', end_date: '2026-12-20' });
+    const r = await patch('b@x.com', s.id, { status: 'done' });
+    expect(r.statusCode).toBe(200);
+    expect(r.json().start_date).toBe('2026-12-01');
+    expect((await app.inject({ url: '/api/submissions?status=planned', headers: as('a@x.com') })).json()).toHaveLength(0);
+    expect((await app.inject({ url: '/api/submissions?status=done', headers: as('a@x.com') })).json()).toHaveLength(1);
+  });
+
   it('lets only the submitter edit form fields, and only in needs_review', async () => {
     const s = await create('a@x.com');
     expect((await patch('b@x.com', s.id, { title: 'Someone else edits' })).statusCode).toBe(403);

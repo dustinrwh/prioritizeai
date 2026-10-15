@@ -8,6 +8,13 @@
       "when": 1792080950253,
       "tag": "0000_safe_shape",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792083542707,
+      "tag": "0001_futuristic_nova",
+      "breakpoints": true
     }
   ]
 }
