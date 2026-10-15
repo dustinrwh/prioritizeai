@@ -84,6 +84,7 @@ export interface UserDTO { id: string; email: string; name: string; avatar_url: 
 export interface SubmissionDTO extends SubmissionFields {
   id: string;
   status: Status;
+  completed_at: string | null;
   priority: Priority | null;
   start_date: string | null;
   end_date: string | null;
@@ -104,7 +105,7 @@ export interface AiSuggestionDTO {
 export interface ActivityDTO {
   id: string;
   actor: Pick<UserDTO, 'id' | 'name' | 'avatar_url'>;
-  field: 'status' | 'priority' | 'dates' | 'content';
+  field: 'status' | 'priority' | 'dates' | 'content' | 'impact';
   old_value: string | null;
   new_value: string | null;
   source: 'user' | 'ai_suggestion';
@@ -112,6 +113,8 @@ export interface ActivityDTO {
 }
 export interface SubmissionDetailDTO extends SubmissionDTO {
   ai_suggestion: AiSuggestionDTO | null;
+  impact: ImpactDTO | null;
+  impact_suggestion: ImpactSuggestionDTO | null;
   activity: ActivityDTO[];
 }
 export interface ApiError { error: string; fields?: { field: string; message: string }[] }
@@ -121,4 +124,43 @@ export function compareForBoard(a: { priority: Priority | null; date_needed_by: 
   const ra = a.priority ? PRIORITY_RANK[a.priority] : 99;
   const rb = b.priority ? PRIORITY_RANK[b.priority] : 99;
   return ra - rb || a.date_needed_by.localeCompare(b.date_needed_by);
+}
+
+// ---- Wins: annual impact estimates for completed initiatives ----
+export const IMPACT_LIMITS = { people_impacted: 100_000_000, hours_saved: 100_000_000, cost_reduced: 10_000_000_000, revenue_increased: 10_000_000_000 } as const;
+
+/** Annual estimates a person confirms for a Done initiative. Whole numbers; dollars are whole dollars. */
+export const impactSchema = z.object({
+  people_impacted: z.coerce.number({ message: 'Enter a number' }).int('Whole numbers only').min(0, 'Cannot be negative').max(IMPACT_LIMITS.people_impacted, 'Too large'),
+  hours_saved: z.coerce.number({ message: 'Enter a number' }).int('Whole numbers only').min(0, 'Cannot be negative').max(IMPACT_LIMITS.hours_saved, 'Too large'),
+  cost_reduced: z.coerce.number({ message: 'Enter a number' }).int('Whole dollars only').min(0, 'Cannot be negative').max(IMPACT_LIMITS.cost_reduced, 'Too large'),
+  revenue_increased: z.coerce.number({ message: 'Enter a number' }).int('Whole dollars only').min(0, 'Cannot be negative').max(IMPACT_LIMITS.revenue_increased, 'Too large'),
+});
+export type Impact = z.infer<typeof impactSchema>;
+
+export const impactSuggestionOutputSchema = impactSchema.extend({
+  confidence: z.enum(CONFIDENCES),
+  rationale: z.string().min(1),
+});
+
+export const WIN_RANGES = ['30d', '90d', '365d', 'all'] as const;
+export type WinRange = (typeof WIN_RANGES)[number];
+export const WIN_RANGE_LABELS: Record<WinRange, string> = { '30d': 'Last 30 days', '90d': 'Last 90 days', '365d': 'Last 12 months', all: 'All time' };
+
+export interface ImpactDTO extends Impact {
+  confirmed_by: Pick<UserDTO, 'id' | 'name' | 'avatar_url'>;
+  confirmed_at: string;
+}
+export interface ImpactSuggestionDTO extends Impact {
+  id: string;
+  confidence: Confidence;
+  rationale: string;
+  model: string;
+  created_at: string;
+}
+export interface WinsDTO {
+  range: WinRange;
+  totals: Impact & { count: number };
+  wins: (SubmissionDTO & { impact: ImpactDTO })[];
+  pending: (SubmissionDTO & { impact_suggestion: ImpactSuggestionDTO | null })[];
 }

@@ -7,6 +7,7 @@ import Fastify from 'fastify';
 import { authRoutes, requireUser, sessionKey } from './auth.js';
 import { settingsRoutes } from './routes/settings.js';
 import { submissionRoutes } from './routes/submissions.js';
+import { winsRoutes } from './routes/wins.js';
 
 export async function buildApp() {
   const prod = process.env.NODE_ENV === 'production';
@@ -29,6 +30,7 @@ export async function buildApp() {
       priv.addHook('preHandler', requireUser);
       priv.get('/api/me', async (req) => ({ id: req.user.id, email: req.user.email, name: req.user.name, avatar_url: req.user.avatarUrl, role: req.user.role }));
       await submissionRoutes(priv);
+      await winsRoutes(priv);
       await settingsRoutes(priv);
     });
   });

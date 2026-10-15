@@ -12,8 +12,8 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { ZodError } from 'zod';
 import { suggestPriority } from '../ai.js';
 import { db } from '../db/index.js';
-import { activity, aiSuggestions, submissions, users } from '../db/schema.js';
-import { activityDTO, submissionDTO, suggestionDTO } from '../serialize.js';
+import { activity, aiSuggestions, impactSuggestions, impacts, submissions, users } from '../db/schema.js';
+import { activityDTO, impactDTO, impactSuggestionDTO, submissionDTO, suggestionDTO } from '../serialize.js';
 import { getSettings } from '../settings.js';
 
 const AI_LIMIT_PER_HOUR = 10;
@@ -22,7 +22,7 @@ const FORM_KEYS = Object.keys(submissionFieldsSchema.shape);
 export const zodFields = (e: ZodError) => e.issues.map((i) => ({ field: String(i.path[0] ?? ''), message: i.message }));
 const fail = (reply: FastifyReply, code: number, error: string, fields?: ApiError['fields']) => reply.code(code).send({ error, fields });
 
-async function loadDetail(id: string): Promise<SubmissionDetailDTO | null> {
+export async function loadDetail(id: string): Promise<SubmissionDetailDTO | null> {
   const [row] = await db
     .select({ s: submissions, u: users })
     .from(submissions)
@@ -30,6 +30,12 @@ async function loadDetail(id: string): Promise<SubmissionDetailDTO | null> {
     .where(eq(submissions.id, id));
   if (!row) return null;
   const [sug] = await db.select().from(aiSuggestions).where(eq(aiSuggestions.submissionId, id)).orderBy(desc(aiSuggestions.createdAt)).limit(1);
+  const [imp] = await db
+    .select({ i: impacts, u: users })
+    .from(impacts)
+    .innerJoin(users, eq(users.id, impacts.confirmedBy))
+    .where(eq(impacts.submissionId, id));
+  const [isug] = await db.select().from(impactSuggestions).where(eq(impactSuggestions.submissionId, id)).orderBy(desc(impactSuggestions.createdAt)).limit(1);
   const acts = await db
     .select({ a: activity, u: users })
     .from(activity)
@@ -39,6 +45,8 @@ async function loadDetail(id: string): Promise<SubmissionDetailDTO | null> {
   return {
     ...submissionDTO(row.s, row.u),
     ai_suggestion: sug ? suggestionDTO(sug) : null,
+    impact: imp ? impactDTO(imp.i, imp.u) : null,
+    impact_suggestion: isug ? impactSuggestionDTO(isug) : null,
     activity: acts.map((r) => activityDTO(r.a, r.u)),
   };
 }
@@ -144,7 +152,7 @@ export async function submissionRoutes(app: FastifyInstance) {
       if (changedForm.length) log.push({ ...base, field: 'content', oldValue: null, newValue: changedForm.join(', ') });
 
       if (log.length) {
-        await tx.update(submissions).set({ ...formChanges, status, priority, startDate, endDate, updatedAt: new Date() }).where(eq(submissions.id, id));
+        await tx.update(submissions).set({ ...formChanges, status, priority, startDate, endDate, updatedAt: new Date(), ...(status === 'done' && cur.status !== 'done' ? { completedAt: new Date() } : {}) }).where(eq(submissions.id, id));
         await tx.insert(activity).values(log);
       }
       return { code: 200 } as const;

@@ -15,6 +15,13 @@
       "when": 1792083542707,
       "tag": "0001_futuristic_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792086863835,
+      "tag": "0002_busy_betty_ross",
+      "breakpoints": true
     }
   ]
 }

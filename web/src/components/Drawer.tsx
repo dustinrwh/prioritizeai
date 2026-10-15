@@ -9,6 +9,7 @@ import { api, ApiFail } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { fmtDate, fmtDateTime } from '../lib/format';
 import { useInvalidate, usePatchSubmission, useSubmission } from '../lib/queries';
+import ImpactPanel from './ImpactPanel';
 import PlanModal from './PlanModal';
 import { Avatar, PriorityBadge, TypeChip, useToast } from './ui';
 
@@ -187,6 +188,8 @@ export default function Drawer({ id, onClose }: { id: string; onClose: () => voi
               <button className="btn btn-primary" disabled={patch.isPending} onClick={async () => { setDateErr({}); if (await run({ start_date: dates.start || null, end_date: dates.end || null })) toast('Dates saved'); }}>Save dates</button>
             )}
 
+            {s.status === 'done' && <ImpactPanel s={s} />}
+
             <AiPanel s={s} />
 
             <section aria-label="Activity">
@@ -198,7 +201,7 @@ export default function Drawer({ id, onClose }: { id: string; onClose: () => voi
                       <Avatar user={a.actor} size={20} />
                       <div>
                         <span className="font-medium">{a.actor.name}</span>{' '}
-                        {a.field === 'content' ? <>edited {a.new_value}</> : <>changed {a.field} <span className="font-mono text-muted">{a.old_value ?? 'unset'}</span> → <span className="font-mono">{a.new_value ?? 'unset'}</span></>}
+                        {a.field === 'content' ? <>edited {a.new_value}</> : a.field === 'impact' ? <>{a.old_value ? 'updated' : 'confirmed'} impact <span className="font-mono text-muted">{a.new_value}</span></> : <>changed {a.field} <span className="font-mono text-muted">{a.old_value ?? 'unset'}</span> → <span className="font-mono">{a.new_value ?? 'unset'}</span></>}
                         {a.source === 'ai_suggestion' && <span className="chip ml-2">via AI suggestion</span>}
                         <div className="text-xs text-muted">{fmtDateTime(a.created_at)}</div>
                       </div>

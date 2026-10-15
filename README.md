@@ -51,7 +51,15 @@ pnpm build && NODE_ENV=production pnpm start
 
 One Node process serves the API under `/api` and the compiled SPA. In production `SESSION_SECRET` must be 32+ characters.
 
+## Wins
+The **Wins** tab reports the impact of completed initiatives as annual estimates: people impacted, hours saved, costs reduced and revenue increased.
+- Moving a project to **Done** stamps `completed_at` and (from the browser) asks the AI for an estimate in the background.
+- A person opens the project, adjusts the numbers and **confirms**. Only confirmed numbers count toward the totals; Done projects without a confirmation appear under "Awaiting your review".
+- Confirming writes an `impact` row to the activity log. The AI estimate uses the model chosen in Settings.
+- The automatic estimate is free once per project; manual re-estimates share the 10-per-hour limit.
+
 ## Notes / deviations from the spec
-- The AI rate limit (10 per user per hour) is counted from the `ai_suggestions` table, so it holds across Cloud Run instances.
+- The AI rate limit (10 per user per hour) is counted from the database tables, so it holds across Cloud Run instances.
+- Gemini 2.5 spends output tokens on reasoning, so `maxOutputTokens` is 1024 (not the spec's 400) with reasoning off for Flash.
 - Settings changes are attributed via `settings.updated_by` / `updated_at` and written to the server log. The `activity` table is per-submission, so it does not hold settings changes.
-- Playwright smoke tests and the Dockerfile / Cloud Build / Cloud Deploy files are not included yet.
+- Playwright smoke tests and Cloud Deploy files are not included yet. `infra/cloudbuild.yaml` builds and deploys to a single Cloud Run environment.

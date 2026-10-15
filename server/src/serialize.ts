@@ -1,5 +1,5 @@
-import type { ActivityDTO, AiSuggestionDTO, SubmissionDTO, UserDTO } from '@prioritize/shared';
-import type { activity, aiSuggestions, submissions, users } from './db/schema.js';
+import type { ActivityDTO, AiSuggestionDTO, ImpactDTO, ImpactSuggestionDTO, SubmissionDTO, UserDTO } from '@prioritize/shared';
+import type { activity, aiSuggestions, impactSuggestions, impacts, submissions, users } from './db/schema.js';
 
 type User = typeof users.$inferSelect;
 type Submission = typeof submissions.$inferSelect;
@@ -18,6 +18,7 @@ export const submissionDTO = (s: Submission, u: User): SubmissionDTO => ({
   user_type: s.userType,
   impact_of_delay: s.impactOfDelay,
   status: s.status,
+  completed_at: s.completedAt?.toISOString() ?? null,
   priority: s.priority,
   start_date: s.startDate,
   end_date: s.endDate,
@@ -45,4 +46,25 @@ export const activityDTO = (a: Activity, actor: User): ActivityDTO => ({
   new_value: a.newValue,
   source: a.source,
   created_at: a.createdAt.toISOString(),
+});
+
+export const impactDTO = (i: typeof impacts.$inferSelect, by: User): ImpactDTO => ({
+  people_impacted: i.peopleImpacted,
+  hours_saved: i.hoursSaved,
+  cost_reduced: i.costReduced,
+  revenue_increased: i.revenueIncreased,
+  confirmed_by: { id: by.id, name: by.name, avatar_url: by.avatarUrl },
+  confirmed_at: i.confirmedAt.toISOString(),
+});
+
+export const impactSuggestionDTO = (s: typeof impactSuggestions.$inferSelect): ImpactSuggestionDTO => ({
+  id: s.id,
+  people_impacted: s.peopleImpacted,
+  hours_saved: s.hoursSaved,
+  cost_reduced: s.costReduced,
+  revenue_increased: s.revenueIncreased,
+  confidence: s.confidence,
+  rationale: s.rationale,
+  model: s.model,
+  created_at: s.createdAt.toISOString(),
 });

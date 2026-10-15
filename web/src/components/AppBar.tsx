@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { BacklogIcon, DashboardIcon, SubmitIcon } from './icons';
+import { BacklogIcon, DashboardIcon, SubmitIcon, TrophyIcon } from './icons';
 import { Avatar, Logo } from './ui';
 
 const tabs = [
   ['/dashboard', 'Dashboard', DashboardIcon],
   ['/backlog', 'Backlog', BacklogIcon],
+  ['/wins', 'Wins', TrophyIcon],
   ['/submit', 'Submit Idea', SubmitIcon],
 ] as const;
 

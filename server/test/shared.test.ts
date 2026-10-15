@@ -1,4 +1,4 @@
-import { compareForBoard, createSubmissionSchema, settingsPatchSchema, todayISO } from '@prioritize/shared';
+import { compareForBoard, createSubmissionSchema, impactSchema, settingsPatchSchema, todayISO } from '@prioritize/shared';
 import { describe, expect, it } from 'vitest';
 
 const valid = {
@@ -41,5 +41,19 @@ describe('compareForBoard', () => {
     ].sort(compareForBoard);
     expect(items.map((i) => i.priority)).toEqual(['critical', 'critical', 'low', null]);
     expect(items[0]!.date_needed_by).toBe('2026-02-01');
+  });
+});
+
+describe('impactSchema', () => {
+  const ok = { people_impacted: '120', hours_saved: 520, cost_reduced: 26000, revenue_increased: 0 };
+  it('coerces numeric strings and accepts zero', () => {
+    const r = impactSchema.safeParse(ok);
+    expect(r.success && r.data.people_impacted).toBe(120);
+  });
+  it('rejects negatives, fractions and missing fields', () => {
+    expect(impactSchema.safeParse({ ...ok, hours_saved: -1 }).success).toBe(false);
+    expect(impactSchema.safeParse({ ...ok, cost_reduced: 10.5 }).success).toBe(false);
+    expect(impactSchema.safeParse({ ...ok, revenue_increased: undefined }).success).toBe(false);
+    expect(impactSchema.safeParse({ ...ok, people_impacted: 1e12 }).success).toBe(false);
   });
 });

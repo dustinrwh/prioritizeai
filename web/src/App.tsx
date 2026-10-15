@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Landing from './pages/Landing';
 import SettingsPage from './pages/Settings';
 import Submit from './pages/Submit';
+import Wins from './pages/Wins';
 import { useAuth } from './lib/auth';
 
 function Protected() {
@@ -26,6 +27,7 @@ export default function App() {
       <Route element={<Protected />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/backlog" element={<Backlog />} />
+        <Route path="/wins" element={<Wins />} />
         <Route path="/submit" element={<Submit />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>

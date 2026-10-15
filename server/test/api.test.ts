@@ -1,9 +1,10 @@
 import { addDays } from './util.js';
 import type { FastifyInstance } from 'fastify';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { db, pool } from '../src/db/index.js';
-import { activity, aiSuggestions, settings, submissions, users } from '../src/db/schema.js';
+import { activity, aiSuggestions, impactSuggestions, impacts, settings, submissions, users } from '../src/db/schema.js';
 import { updateSettings } from '../src/settings.js';
 
 let app: FastifyInstance;
@@ -34,6 +35,8 @@ afterAll(async () => {
   await pool.end();
 });
 beforeEach(async () => {
+  await db.delete(impacts);
+  await db.delete(impactSuggestions);
   await db.delete(activity);
   await db.delete(aiSuggestions);
   await db.delete(submissions);
@@ -153,5 +156,84 @@ describe('settings', () => {
     const r = await app.inject({ method: 'PATCH', url: '/api/settings', headers: as('a@x.com'), payload: { ai_model: 'gemini-2.5-pro' } });
     expect(r.json().ai_model).toBe('gemini-2.5-pro');
     expect((await app.inject({ url: '/api/settings', headers: as('b@x.com') })).json().ai_model).toBe('gemini-2.5-pro');
+  });
+});
+
+describe('wins', () => {
+  const finish = async (email: string, over = {}) => {
+    const s = await create(email, over);
+    await patch(email, s.id, { status: 'done' });
+    return s;
+  };
+  const confirm = (email: string, id: string, payload: object) => app.inject({ method: 'PUT', url: `/api/submissions/${id}/impact`, headers: as(email), payload });
+  const wins = async (range = 'all') => (await app.inject({ url: `/api/wins?range=${range}`, headers: as('a@x.com') })).json();
+
+  it('stamps completed_at when a project moves to Done', async () => {
+    const s = await create('a@x.com');
+    expect((await patch('b@x.com', s.id, { status: 'in_review' })).json().completed_at).toBeNull();
+    expect((await patch('b@x.com', s.id, { status: 'done' })).json().completed_at).not.toBeNull();
+  });
+
+  it('only confirms impact for Done projects and validates numbers', async () => {
+    const open = await create('a@x.com');
+    const nums = { people_impacted: 100, hours_saved: 500, cost_reduced: 20000, revenue_increased: 75000 };
+    expect((await confirm('b@x.com', open.id, nums)).statusCode).toBe(400);
+    const done = await finish('a@x.com');
+    const bad = await confirm('b@x.com', done.id, { ...nums, hours_saved: -5, cost_reduced: 1.5 });
+    expect(bad.statusCode).toBe(400);
+    expect(bad.json().fields.map((f: { field: string }) => f.field).sort()).toEqual(['cost_reduced', 'hours_saved']);
+    expect((await confirm('b@x.com', done.id, { ...nums, revenue_increased: undefined })).statusCode).toBe(400);
+  });
+
+  it('counts only confirmed wins in totals, lists the rest as pending, and logs activity', async () => {
+    const one = await finish('a@x.com', { title: 'Confirmed win one' });
+    const two = await finish('a@x.com', { title: 'Confirmed win two' });
+    await finish('a@x.com', { title: 'Not yet confirmed' });
+    await confirm('b@x.com', one.id, { people_impacted: 100, hours_saved: 500, cost_reduced: 20000, revenue_increased: 75000 });
+    const detail = (await confirm('b@x.com', two.id, { people_impacted: 40, hours_saved: 100, cost_reduced: 5000, revenue_increased: 0 })).json();
+    expect(detail.impact.confirmed_by.name).toBe('b');
+    expect(detail.activity[0].field).toBe('impact');
+
+    const w = await wins();
+    expect(w.totals).toEqual({ people_impacted: 140, hours_saved: 600, cost_reduced: 25000, revenue_increased: 75000, count: 2 });
+    expect(w.wins).toHaveLength(2);
+    expect(w.pending.map((p: { title: string }) => p.title)).toEqual(['Not yet confirmed']);
+
+    // Editing replaces, not adds.
+    await confirm('a@x.com', one.id, { people_impacted: 10, hours_saved: 10, cost_reduced: 10, revenue_increased: 10 });
+    expect((await wins()).totals.people_impacted).toBe(50);
+  });
+
+  it('filters by completion date range', async () => {
+    const old = await finish('a@x.com');
+    await db.update(submissions).set({ completedAt: new Date(Date.now() - 120 * 86_400_000) }).where(eq(submissions.id, old.id));
+    const fresh = await finish('a@x.com');
+    await confirm('b@x.com', old.id, { people_impacted: 1, hours_saved: 1, cost_reduced: 1, revenue_increased: 1 });
+    await confirm('b@x.com', fresh.id, { people_impacted: 1, hours_saved: 1, cost_reduced: 1, revenue_increased: 1 });
+    expect((await wins('30d')).totals.count).toBe(1);
+    expect((await wins('90d')).totals.count).toBe(1);
+    expect((await wins('365d')).totals.count).toBe(2);
+    expect((await wins('all')).totals.count).toBe(2);
+    expect((await wins('bogus')).range).toBe('90d');
+  });
+
+  it('estimates impact only for Done, with one free automatic estimate and a manual rate limit', async () => {
+    const open = await create('a@x.com');
+    expect((await app.inject({ method: 'POST', url: `/api/submissions/${open.id}/impact-suggest`, headers: as('b@x.com'), payload: {} })).statusCode).toBe(400);
+
+    const done = await finish('a@x.com');
+    const suggest = (payload: object = {}) => app.inject({ method: 'POST', url: `/api/submissions/${done.id}/impact-suggest`, headers: as('b@x.com'), payload });
+    const first = await suggest({ trigger: 'auto' });
+    expect(first.statusCode).toBe(200);
+    expect(first.json().people_impacted).toBe(50);
+    // A second "auto" claim is treated as manual, so it counts toward the limit: 10 manual allowed, 11th rejected.
+    for (let i = 0; i < 10; i++) expect((await suggest({ trigger: 'auto' })).statusCode).toBe(200);
+    expect((await suggest({ trigger: 'auto' })).statusCode).toBe(429);
+
+    const detail = (await app.inject({ url: `/api/submissions/${done.id}`, headers: as('a@x.com') })).json();
+    expect(detail.impact).toBeNull();
+    expect(detail.impact_suggestion).not.toBeNull();
+    // Suggestions alone never count.
+    expect((await wins()).totals.count).toBe(0);
   });
 });

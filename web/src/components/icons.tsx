@@ -34,3 +34,24 @@ export const CalendarIcon = (p: P) => (
 export const SparklesIcon = (p: P) => (
   <Icon {...p}><path d="M12 3v4M12 17v4M3 12h4M17 12h4" /><path d="m6.3 6.3 2.4 2.4M15.3 15.3l2.4 2.4M17.7 6.3l-2.4 2.4M8.7 15.3l-2.4 2.4" /></Icon>
 );
+
+/** Trophy: Wins */
+export const TrophyIcon = (p: P) => (
+  <Icon {...p}><path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" /><path d="M8 6H5a1 1 0 0 0-1 1c0 2.2 1.6 4 4 4M16 6h3a1 1 0 0 1 1 1c0 2.2-1.6 4-4 4" /><path d="M12 13v4M8 21h8M9.5 17h5" /></Icon>
+);
+/** People */
+export const PeopleIcon = (p: P) => (
+  <Icon {...p}><circle cx="9" cy="8" r="3.25" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><path d="M16 5.2a3.25 3.25 0 0 1 0 5.6M18 14.4c1.8.8 3 2.6 3 5.6" /></Icon>
+);
+/** Clock: hours saved */
+export const ClockIcon = (p: P) => (
+  <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon>
+);
+/** Trending down: costs reduced */
+export const TrendDownIcon = (p: P) => (
+  <Icon {...p}><path d="m3 7 6 6 4-4 8 8" /><path d="M15 17h6v-6" /></Icon>
+);
+/** Trending up: revenue increased */
+export const TrendUpIcon = (p: P) => (
+  <Icon {...p}><path d="m3 17 6-6 4 4 8-8" /><path d="M15 7h6v6" /></Icon>
+);

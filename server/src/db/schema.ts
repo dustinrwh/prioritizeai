@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { bigint, check, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const roleEnum = pgEnum('role', ['member', 'admin']);
 export const submissionTypeEnum = pgEnum('submission_type', ['new_project', 'bug_fix', 'feature_request']);
@@ -7,7 +7,7 @@ export const userTypeEnum = pgEnum('user_type', ['internal', 'external', 'both']
 export const statusEnum = pgEnum('status', ['needs_review', 'in_review', 'planned', 'done', 'ice_box']);
 export const priorityEnum = pgEnum('priority', ['critical', 'high', 'medium', 'low']);
 export const confidenceEnum = pgEnum('confidence', ['high', 'medium', 'low']);
-export const activityFieldEnum = pgEnum('activity_field', ['status', 'priority', 'dates', 'content']);
+export const activityFieldEnum = pgEnum('activity_field', ['status', 'priority', 'dates', 'content', 'impact']);
 export const activitySourceEnum = pgEnum('activity_source', ['user', 'ai_suggestion']);
 
 export const users = pgTable('users', {
@@ -35,6 +35,7 @@ export const submissions = pgTable(
     priority: priorityEnum('priority'),
     startDate: date('start_date', { mode: 'string' }),
     endDate: date('end_date', { mode: 'string' }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
     submittedBy: uuid('submitted_by').notNull().references(() => users.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -86,3 +87,39 @@ export const settings = pgTable('settings', {
   updatedBy: uuid('updated_by').references(() => users.id),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Confirmed annual impact for a Done initiative (one row per submission). */
+export const impacts = pgTable(
+  'impacts',
+  {
+    submissionId: uuid('submission_id').primaryKey().references(() => submissions.id),
+    peopleImpacted: integer('people_impacted').notNull(),
+    hoursSaved: integer('hours_saved').notNull(),
+    costReduced: bigint('cost_reduced', { mode: 'number' }).notNull(),
+    revenueIncreased: bigint('revenue_increased', { mode: 'number' }).notNull(),
+    confirmedBy: uuid('confirmed_by').notNull().references(() => users.id),
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  () => [],
+);
+
+/** AI-proposed annual impact. Never counted until a person confirms numbers. */
+export const impactSuggestions = pgTable(
+  'impact_suggestions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    submissionId: uuid('submission_id').notNull().references(() => submissions.id),
+    peopleImpacted: integer('people_impacted').notNull(),
+    hoursSaved: integer('hours_saved').notNull(),
+    costReduced: bigint('cost_reduced', { mode: 'number' }).notNull(),
+    revenueIncreased: bigint('revenue_increased', { mode: 'number' }).notNull(),
+    confidence: confidenceEnum('confidence').notNull(),
+    rationale: text('rationale').notNull(),
+    model: text('model').notNull(),
+    requestedBy: uuid('requested_by').notNull().references(() => users.id),
+    /** auto = fired when the project moved to Done (not counted against the hourly limit). */
+    trigger: text('trigger').notNull().default('manual'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('impact_suggestions_submission_idx').on(t.submissionId, t.createdAt.desc()), index('impact_suggestions_user_time_idx').on(t.requestedBy, t.createdAt)],
+);
