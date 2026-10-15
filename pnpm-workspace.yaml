@@ -1,0 +1,8 @@
+packages:
+  - shared
+  - server
+  - web
+allowBuilds:
+  '@google/genai': false
+  esbuild: true
+  protobufjs: true
