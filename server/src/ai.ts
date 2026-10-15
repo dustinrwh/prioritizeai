@@ -62,14 +62,22 @@ async function vertexSuggest(model: string, system: string, prompt: string): Pro
     systemInstruction: system,
     generationConfig: {
       temperature: 0.2,
-      maxOutputTokens: 400,
+      // Gemini 2.5 counts internal reasoning against this cap, so 400 truncated the JSON on larger prompts.
+      // The visible answer is ~100 tokens; the rest is headroom. Reasoning is off for Flash and minimal for Pro.
+      maxOutputTokens: 1024,
       responseMimeType: 'application/json',
       responseSchema: RESPONSE_SCHEMA as never,
-    },
+      thinkingConfig: { thinkingBudget: model.includes('pro') ? 128 : 0 },
+    } as never,
   });
   const res = await withTimeout(m.generateContent({ contents: [{ role: 'user', parts: [{ text: prompt }] }] }));
-  const text = res.response.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
-  return aiSuggestionOutputSchema.parse(JSON.parse(text));
+  const candidate = res.response.candidates?.[0];
+  const text = candidate?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
+  try {
+    return aiSuggestionOutputSchema.parse(JSON.parse(text));
+  } catch (err) {
+    throw new Error(`Unusable model output (finishReason=${candidate?.finishReason}): ${text.slice(0, 200)}`, { cause: err });
+  }
 }
 
 /** Deterministic stand-in so the flow works locally without GCP credentials. */
