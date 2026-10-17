@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import { usePendingWins } from '../lib/queries';
 import { BacklogIcon, DashboardIcon, SubmitIcon, TrophyIcon } from './icons';
 import { Avatar, Logo } from './ui';
 
@@ -15,6 +16,7 @@ export default function AppBar() {
   const { user, signOut } = useAuth();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
+  const pending = usePendingWins().data?.count ?? 0;
   return (
     <header className="h-14 shrink-0 border-b border-line bg-surface flex items-center px-6 gap-8">
       <Link to="/dashboard" aria-label="Prioritize AI home"><Logo size={24} /></Link>
@@ -23,6 +25,11 @@ export default function AppBar() {
           <NavLink key={to} to={to} className={({ isActive }) => `flex items-center gap-2 px-3 py-1.5 rounded-md text-sm ${isActive ? 'bg-surface-2 text-ink' : 'text-muted hover:text-ink'}`}>
             <TabIcon />
             {label}
+            {to === '/wins' && pending > 0 && (
+              <span className="ml-0.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-accent to-accent2 px-1.5 text-[11px] font-semibold leading-[18px] text-white" title={`${pending} Done ${pending === 1 ? 'project needs' : 'projects need'} impact confirmation`} aria-label={`${pending} awaiting review`}>
+                {pending}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

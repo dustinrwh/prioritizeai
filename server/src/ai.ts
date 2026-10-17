@@ -47,9 +47,12 @@ const RESPONSE_SCHEMA = {
 };
 
 const TIMEOUT_MS = 8000;
+/** Pro reasons longer; measured calls ranged from 3s to 11s, so it gets a wider window than Flash. */
+const PRO_TIMEOUT_MS = 20_000;
+const timeoutFor = (model: string) => (model.includes('pro') ? PRO_TIMEOUT_MS : TIMEOUT_MS);
 
-function withTimeout<T>(p: Promise<T>): Promise<T> {
-  return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('AI timeout')), TIMEOUT_MS))]);
+function withTimeout<T>(p: Promise<T>, ms = TIMEOUT_MS): Promise<T> {
+  return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('AI timeout')), ms))]);
 }
 
 async function vertexSuggest(model: string, system: string, prompt: string): Promise<Suggestion> {
@@ -70,7 +73,7 @@ async function vertexSuggest(model: string, system: string, prompt: string): Pro
       thinkingConfig: { thinkingBudget: model.includes('pro') ? 128 : 0 },
     } as never,
   });
-  const res = await withTimeout(m.generateContent({ contents: [{ role: 'user', parts: [{ text: prompt }] }] }));
+  const res = await withTimeout(m.generateContent({ contents: [{ role: 'user', parts: [{ text: prompt }] }] }), timeoutFor(model));
   const candidate = res.response.candidates?.[0];
   const text = candidate?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
   try {
@@ -157,7 +160,7 @@ async function vertexImpact(model: string, prompt: string): Promise<ImpactEstima
       thinkingConfig: { thinkingBudget: model.includes('pro') ? 128 : 0 },
     } as never,
   });
-  const res = await withTimeout(m.generateContent({ contents: [{ role: 'user', parts: [{ text: prompt }] }] }));
+  const res = await withTimeout(m.generateContent({ contents: [{ role: 'user', parts: [{ text: prompt }] }] }), timeoutFor(model));
   const candidate = res.response.candidates?.[0];
   const text = candidate?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
   try {

@@ -198,6 +198,17 @@ describe('wins', () => {
     expect((await wins()).totals.people_impacted).toBe(50);
   });
 
+  it('counts Done projects awaiting confirmation', async () => {
+    const count = async () => (await app.inject({ url: '/api/wins/pending-count', headers: as('a@x.com') })).json().count;
+    expect(await count()).toBe(0);
+    await create('a@x.com'); // not done: not counted
+    const one = await finish('a@x.com');
+    await finish('a@x.com');
+    expect(await count()).toBe(2);
+    await confirm('b@x.com', one.id, { people_impacted: 1, hours_saved: 1, cost_reduced: 1, revenue_increased: 1 });
+    expect(await count()).toBe(1);
+  });
+
   it('filters by completion date range', async () => {
     const old = await finish('a@x.com');
     await col.submissions.doc(old.id).update({ completed_at: Timestamp.fromMillis(Date.now() - 120 * 86_400_000) });

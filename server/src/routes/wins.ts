@@ -16,6 +16,12 @@ const summary = (i: { people_impacted: number; hours_saved: number; cost_reduced
   `people ${i.people_impacted} · hours ${i.hours_saved} · cost $${i.cost_reduced} · revenue $${i.revenue_increased}`;
 
 export async function winsRoutes(app: FastifyInstance) {
+  // Done projects whose impact nobody has confirmed yet; drives the badge on the Wins tab.
+  app.get('/api/wins/pending-count', async () => {
+    const snap = await col.submissions.where('status', '==', 'done').where('impact', '==', null).count().get();
+    return { count: snap.data().count };
+  });
+
   app.get('/api/wins', async (req): Promise<WinsDTO> => {
     const q = (req.query as { range?: string }).range;
     const range: WinRange = (WIN_RANGES as readonly string[]).includes(q ?? '') ? (q as WinRange) : '90d';

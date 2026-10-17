@@ -60,7 +60,7 @@ export default function ImpactPanel({ s }: { s: SubmissionDetailDTO }) {
   const generating = !sug && !s.impact && !!s.completed_at && Date.now() - Date.parse(s.completed_at) < 60_000;
 
   return (
-    <section className="rounded-lg border border-line bg-surface-2 p-4" aria-label="Impact">
+    <section className={`rounded-lg border bg-surface-2 p-4 ${s.impact ? 'border-line' : 'border-accent/50'}`} aria-label="Impact">
       <div className="flex items-start justify-between gap-2 mb-1">
         <h3 className="text-sm font-semibold">Impact · annual estimates</h3>
         {s.impact ? (
@@ -69,6 +69,7 @@ export default function ImpactPanel({ s }: { s: SubmissionDetailDTO }) {
           <span className="chip whitespace-nowrap">Awaiting confirmation</span>
         )}
       </div>
+      {!s.impact && <p className="mb-3 text-sm">Review these estimates, adjust any numbers, then press <strong>Confirm impact</strong> to add this project to Wins.</p>}
       {s.impact && (
         <p className="mb-3 flex items-center gap-1.5 text-xs text-muted">
           <Avatar user={s.impact.confirmed_by} size={16} /> {s.impact.confirmed_by.name} · {fmtDateTime(s.impact.confirmed_at)}

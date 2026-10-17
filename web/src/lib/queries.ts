@@ -17,6 +17,10 @@ export const useSubmission = (id: string | null) =>
     refetchInterval: (q) => (awaitingEstimate(q.state.data) ? 3000 : false),
   });
 
+/** How many Done projects still need a person to confirm their impact. Refreshes whenever wins data changes. */
+export const usePendingWins = () =>
+  useQuery({ queryKey: ['wins', 'pending-count'], queryFn: () => api<{ count: number }>('/wins/pending-count'), refetchInterval: 60_000 });
+
 export const useWins = (range: WinRange) => useQuery({ queryKey: ['wins', range], queryFn: () => api<WinsDTO>(`/wins?range=${range}`) });
 
 export const useSettings = () => useQuery({ queryKey: ['settings'], queryFn: () => api<Settings>('/settings') });
