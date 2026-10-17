@@ -4,14 +4,17 @@ export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
     env: {
-      DATABASE_URL: 'postgres://localhost:5432/prioritize_ai_test',
+      // The test emulator runs on its own port so it never touches `pnpm dev` data.
+      FIRESTORE_EMULATOR_HOST: '127.0.0.1:8182',
+      GCP_PROJECT: 'demo-prioritize-test',
       SESSION_SECRET: 'test-secret-test-secret-test-secret-123',
       DEV_AUTH: '1',
       AI_PROVIDER: 'mock',
-      MIGRATIONS_DIR: './migrations',
       LOG_LEVEL: 'silent',
     },
     globalSetup: ['test/global-setup.ts'],
     fileParallelism: false,
+    testTimeout: 20000,
+    hookTimeout: 60000,
   },
 });

@@ -8,8 +8,8 @@
     "start": "pnpm --filter ./server start",
     "lint": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "db:generate": "pnpm --filter ./server db:generate",
-    "db:migrate": "pnpm --filter ./server db:migrate"
+    "emulator": "sh scripts/emulator.sh",
+    "seed": "pnpm --filter @prioritize/server seed"
   },
   "packageManager": "pnpm@12.11.2"
 }

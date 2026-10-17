@@ -5,6 +5,7 @@ import secureSession from '@fastify/secure-session';
 import fastifyStatic from '@fastify/static';
 import Fastify from 'fastify';
 import { authRoutes, requireUser, sessionKey } from './auth.js';
+import { userDTO } from './serialize.js';
 import { settingsRoutes } from './routes/settings.js';
 import { submissionRoutes } from './routes/submissions.js';
 import { winsRoutes } from './routes/wins.js';
@@ -28,7 +29,7 @@ export async function buildApp() {
     await authRoutes(api);
     await api.register(async (priv) => {
       priv.addHook('preHandler', requireUser);
-      priv.get('/api/me', async (req) => ({ id: req.user.id, email: req.user.email, name: req.user.name, avatar_url: req.user.avatarUrl, role: req.user.role }));
+      priv.get('/api/me', async (req) => userDTO(req.user));
       await submissionRoutes(priv);
       await winsRoutes(priv);
       await settingsRoutes(priv);

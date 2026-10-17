@@ -1,70 +1,65 @@
 import type { ActivityDTO, AiSuggestionDTO, ImpactDTO, ImpactSuggestionDTO, SubmissionDTO, UserDTO } from '@prioritize/shared';
-import type { activity, aiSuggestions, impactSuggestions, impacts, submissions, users } from './db/schema.js';
+import { iso, type ActivityDoc, type AiSuggestionDoc, type AuthedUser, type ImpactSuggestionDoc, type StoredImpact, type SubmissionDoc } from './firestore.js';
 
-type User = typeof users.$inferSelect;
-type Submission = typeof submissions.$inferSelect;
-type Suggestion = typeof aiSuggestions.$inferSelect;
-type Activity = typeof activity.$inferSelect;
+export const userDTO = (u: AuthedUser): UserDTO => ({ id: u.id, email: u.email, name: u.name, avatar_url: u.avatar_url, role: u.role });
 
-export const userDTO = (u: User): UserDTO => ({ id: u.id, email: u.email, name: u.name, avatar_url: u.avatarUrl, role: u.role });
-
-export const submissionDTO = (s: Submission, u: User): SubmissionDTO => ({
-  id: s.id,
+export const submissionDTO = (id: string, s: SubmissionDoc): SubmissionDTO => ({
+  id,
   title: s.title,
   description: s.description,
   type: s.type,
-  date_needed_by: s.dateNeededBy,
-  impacted_users: s.impactedUsers,
-  user_type: s.userType,
-  impact_of_delay: s.impactOfDelay,
+  date_needed_by: s.date_needed_by,
+  impacted_users: s.impacted_users,
+  user_type: s.user_type,
+  impact_of_delay: s.impact_of_delay,
   status: s.status,
-  completed_at: s.completedAt?.toISOString() ?? null,
+  completed_at: iso(s.completed_at),
   priority: s.priority,
-  start_date: s.startDate,
-  end_date: s.endDate,
-  submitted_by: userDTO(u),
-  created_at: s.createdAt.toISOString(),
-  updated_at: s.updatedAt.toISOString(),
+  start_date: s.start_date,
+  end_date: s.end_date,
+  submitted_by: s.submitted_by,
+  created_at: iso(s.created_at)!,
+  updated_at: iso(s.updated_at)!,
 });
 
-export const suggestionDTO = (s: Suggestion): AiSuggestionDTO => ({
-  id: s.id,
-  suggested_priority: s.suggestedPriority,
+export const suggestionDTO = (id: string, s: AiSuggestionDoc): AiSuggestionDTO => ({
+  id,
+  suggested_priority: s.suggested_priority,
   confidence: s.confidence,
   rationale: s.rationale,
   model: s.model,
-  accepted_at: s.acceptedAt?.toISOString() ?? null,
-  dismissed_at: s.dismissedAt?.toISOString() ?? null,
-  created_at: s.createdAt.toISOString(),
+  accepted_at: iso(s.accepted_at),
+  dismissed_at: iso(s.dismissed_at),
+  created_at: iso(s.created_at)!,
 });
 
-export const activityDTO = (a: Activity, actor: User): ActivityDTO => ({
-  id: a.id,
-  actor: { id: actor.id, name: actor.name, avatar_url: actor.avatarUrl },
+export const activityDTO = (id: string, a: ActivityDoc): ActivityDTO => ({
+  id,
+  actor: a.actor,
   field: a.field,
-  old_value: a.oldValue,
-  new_value: a.newValue,
+  old_value: a.old_value,
+  new_value: a.new_value,
   source: a.source,
-  created_at: a.createdAt.toISOString(),
+  created_at: iso(a.created_at)!,
 });
 
-export const impactDTO = (i: typeof impacts.$inferSelect, by: User): ImpactDTO => ({
-  people_impacted: i.peopleImpacted,
-  hours_saved: i.hoursSaved,
-  cost_reduced: i.costReduced,
-  revenue_increased: i.revenueIncreased,
-  confirmed_by: { id: by.id, name: by.name, avatar_url: by.avatarUrl },
-  confirmed_at: i.confirmedAt.toISOString(),
+export const impactDTO = (i: StoredImpact): ImpactDTO => ({
+  people_impacted: i.people_impacted,
+  hours_saved: i.hours_saved,
+  cost_reduced: i.cost_reduced,
+  revenue_increased: i.revenue_increased,
+  confirmed_by: i.confirmed_by,
+  confirmed_at: iso(i.confirmed_at)!,
 });
 
-export const impactSuggestionDTO = (s: typeof impactSuggestions.$inferSelect): ImpactSuggestionDTO => ({
-  id: s.id,
-  people_impacted: s.peopleImpacted,
-  hours_saved: s.hoursSaved,
-  cost_reduced: s.costReduced,
-  revenue_increased: s.revenueIncreased,
+export const impactSuggestionDTO = (id: string, s: ImpactSuggestionDoc): ImpactSuggestionDTO => ({
+  id,
+  people_impacted: s.people_impacted,
+  hours_saved: s.hours_saved,
+  cost_reduced: s.cost_reduced,
+  revenue_increased: s.revenue_increased,
   confidence: s.confidence,
   rationale: s.rationale,
   model: s.model,
-  created_at: s.createdAt.toISOString(),
+  created_at: iso(s.created_at)!,
 });

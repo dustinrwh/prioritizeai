@@ -1,9 +1,7 @@
 import { createHash } from 'node:crypto';
 import { OAuth2Client } from 'google-auth-library';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { eq } from 'drizzle-orm';
-import { db } from './db/index.js';
-import { users } from './db/schema.js';
+import { col, nowTs, type AuthedUser, type UserDoc } from './firestore.js';
 import { getSettings } from './settings.js';
 import { userDTO } from './serialize.js';
 
@@ -11,28 +9,41 @@ declare module '@fastify/secure-session' {
   interface SessionData { userId: string }
 }
 declare module 'fastify' {
-  interface FastifyRequest { user: typeof users.$inferSelect }
+  interface FastifyRequest { user: AuthedUser }
 }
 
 export const sessionKey = (secret: string) => createHash('sha256').update(secret).digest();
 
-async function upsertUser(p: { sub: string; email: string; name: string; picture?: string | null }) {
-  const [u] = await db
-    .insert(users)
-    .values({ googleSub: p.sub, email: p.email, name: p.name, avatarUrl: p.picture ?? null })
-    .onConflictDoUpdate({ target: users.googleSub, set: { email: p.email, name: p.name, avatarUrl: p.picture ?? null } })
-    .returning();
-  return u!;
+/** One user per Google account. New users get a deterministic id, so two simultaneous first sign-ins cannot create duplicates. */
+export async function upsertUser(p: { sub: string; email: string; name: string; picture?: string | null }): Promise<AuthedUser> {
+  const found = await col.users.where('google_sub', '==', p.sub).limit(1).get();
+  const fields = { email: p.email, name: p.name, avatar_url: p.picture ?? null };
+  if (!found.empty) {
+    const doc = found.docs[0]!;
+    await doc.ref.update(fields);
+    return { ...(doc.data() as UserDoc), ...fields, id: doc.id };
+  }
+  const id = `g-${createHash('sha256').update(p.sub).digest('hex').slice(0, 32)}`;
+  const created: UserDoc = { google_sub: p.sub, ...fields, role: 'member', created_at: nowTs() };
+  try {
+    await col.users.doc(id).create(created);
+    return { ...created, id };
+  } catch {
+    const again = await col.users.doc(id).get();
+    if (!again.exists) throw new Error('Could not create user');
+    await again.ref.update(fields);
+    return { ...(again.data() as UserDoc), ...fields, id };
+  }
 }
 
 export async function requireUser(req: FastifyRequest, reply: FastifyReply) {
   const id = req.session.get('userId');
-  const [u] = id ? await db.select().from(users).where(eq(users.id, id)) : [];
-  if (!u) {
+  const snap = id ? await col.users.doc(id).get() : null;
+  if (!snap?.exists) {
     req.session.delete();
     return reply.code(401).send({ error: 'Not signed in' });
   }
-  req.user = u;
+  req.user = { ...(snap.data() as UserDoc), id: snap.id };
 }
 
 export async function authRoutes(app: FastifyInstance) {

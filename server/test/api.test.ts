@@ -1,10 +1,9 @@
 import { addDays } from './util.js';
 import type { FastifyInstance } from 'fastify';
-import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
-import { db, pool } from '../src/db/index.js';
-import { activity, aiSuggestions, impactSuggestions, impacts, settings, submissions, users } from '../src/db/schema.js';
+import { Timestamp } from '@google-cloud/firestore';
+import { col, fs } from '../src/firestore.js';
 import { updateSettings } from '../src/settings.js';
 
 let app: FastifyInstance;
@@ -32,16 +31,11 @@ beforeAll(async () => {
 });
 afterAll(async () => {
   await app.close();
-  await pool.end();
+  await fs.terminate();
 });
 beforeEach(async () => {
-  await db.delete(impacts);
-  await db.delete(impactSuggestions);
-  await db.delete(activity);
-  await db.delete(aiSuggestions);
-  await db.delete(submissions);
-  await db.delete(settings);
-  await db.delete(users);
+  // Wipe the whole emulator database between tests.
+  await fetch('http://127.0.0.1:8182/emulator/v1/projects/demo-prioritize-test/databases/(default)/documents', { method: 'DELETE' });
   await updateSettings({ ai_model: 'gemini-2.5-flash', ice_box_resets_priority: false, allowed_domain: '' }, (await login('admin@x.com')).id);
   await login('a@x.com');
   await login('b@x.com');
@@ -206,7 +200,7 @@ describe('wins', () => {
 
   it('filters by completion date range', async () => {
     const old = await finish('a@x.com');
-    await db.update(submissions).set({ completedAt: new Date(Date.now() - 120 * 86_400_000) }).where(eq(submissions.id, old.id));
+    await col.submissions.doc(old.id).update({ completed_at: Timestamp.fromMillis(Date.now() - 120 * 86_400_000) });
     const fresh = await finish('a@x.com');
     await confirm('b@x.com', old.id, { people_impacted: 1, hours_saved: 1, cost_reduced: 1, revenue_increased: 1 });
     await confirm('b@x.com', fresh.id, { people_impacted: 1, hours_saved: 1, cost_reduced: 1, revenue_increased: 1 });

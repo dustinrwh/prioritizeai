@@ -21,13 +21,12 @@ COPY web/package.json web/
 RUN pnpm install --frozen-lockfile --prod --filter @prioritize/server...
 
 FROM node:20-slim
-ENV NODE_ENV=production PORT=8080 WEB_DIST=/app/web/dist MIGRATIONS_DIR=/app/server/migrations
+ENV NODE_ENV=production PORT=8080 WEB_DIST=/app/web/dist
 # Keep the pnpm workspace layout so the symlinked node_modules resolve.
 WORKDIR /app/server
 COPY --from=deps /app/node_modules /app/node_modules
 COPY --from=deps /app/server/node_modules ./node_modules
 COPY --from=build /app/server/dist ./dist
-COPY --from=build /app/server/migrations ./migrations
 COPY --from=build /app/web/dist /app/web/dist
 USER node
 EXPOSE 8080
